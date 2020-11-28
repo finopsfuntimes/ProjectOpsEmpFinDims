@@ -1,8 +1,12 @@
 ## Dynamics 365 Project Operations - Employee financial dimensions (example solution)
 
-*This is an example customisation for [Dynamics 365 Project Operations](https://dynamics.microsoft.com/en-us/project-operations/overview/). The solution is provided 'as-is' with no warranty and is not supported by Microsoft. It can be used as a guide to build out a custom solution for a customer implementation, to be managed/maintained by the customer or by the implementing partner. Check out the CE and FinOps branches in this repo to browse the code/artefacts.*
+*This is an example customisation for [Dynamics 365 Project Operations](https://dynamics.microsoft.com/en-us/project-operations/overview/). The solution is provided 'as-is' with no warranty and is not supported by Microsoft. It can be used as a guide to build out a custom solution for a customer implementation, to be managed/maintained by the customer or by the implementing partner.*
+
+*Browse the CE_Solution and FinOps_Solution folders in this repo for source code, follow the walkthrough below to build step by step or download the latest release to get the Power Apps solution file and the F&O axpp solution file, which can be imported into your own dev environments for testing out.* 
 
 **NOTE** - THIS IS WORK IN PROGRESS (28.11.2020)
+
+## Walkthrough
 
 Here we will talk about a solution for a feature gap that many customers will face in Dynamics 365 Project Operations [integrated deployment mode](https://docs.microsoft.com/en-us/dynamics365/project-operations/environment/project-operations-integrated-deployment-overview) (as per November 2020 release,) but this is also a useful example of how to implement a customisation that spans the D365 Customer Engagement and Finance & Operations platforms, using [DualWrite integration](https://docs.microsoft.com/en-us/dynamics365/fin-ops-core/dev-itpro/data-entities/dual-write/dual-write-overview). Let's get into it!
 
@@ -74,11 +78,26 @@ In the [PowerApps maker portal](https://make.powerapps.com), navigate to the cor
 Open the table details and add a new column to hold the email address of the bookable resource. The data type should be text, and this will be a calculated field so click the 'Add' button to create the calculation. The calculation will lookup the email address of the bookable resource using the action formula `msdyn_bookableresource.msdyn_primaryemail` as per the screenshot:
 ![Screenshots of adding calculated column to Actuals table in PowerApps maker portal](https://github.com/finopsfuntimes/ProjectOpsEmpFinDims/raw/main/ScreenShots/MakeAddEmailField.JPG) 
 
-Save the changes and publish the customisation.
+Save the changes and publish the customisation.  
+
 #### Part 2 - Extend the F&O data entity with an email field
-Table`ProjCDSActualsImport`
-Table`ProjActualsImportStaging`
-Entity `ProjActualsImportEntity`
+The table that we need to extend with our new field in Finance & Operations is `ProjCDSActualsImport` but since we are going to need this field exposed for integration purposes, a data entity is also involved. The data entity exposes tables from the system via OData endpoints and data management framework and so we include the new custom field in the data entity and it's associated staging table, which are  `ProjActualsImportEntity` and `ProjActualsImportStaging`
+respectively.
+
+In Visual Studio on the development VM, search for the tables and data entity mentioned above one by one. As you find them, right click and select 'create extension in current project'. You should end up with a project as shown in the screenshot below:
+
+Double click on the `ProjCDSActualsImport` table to open the designer. Search for the extended data type BaseEmail and drag it from the results window, dropping it on the 'fields' node in the designer window as shown in the screenshot below. You can then use the properties window to change the name of the new field to something appropriate.
+
+
+Next we need to add the same field to the data entity staging table, which would be used by any data management import or export projects. Double click the `ProjActualsImportStaging` table from your project to open the designer and repeat the steps above to drag the BaseEmail EDT into the fields node and give it the same name as above.
+
+At this point, we should build the solution to ensure that the new field is available for the next step.
+
+The data entity now needs to have the new field added, so double click `ProjActualsImportEntity` in your project to open the designer. Expand the data sources node and find the new field that was added above. You can drag the field from the datasource up to the 'fields' node at the top.
+
+Finally, we need to build the solution and refresh the entity definitions in the development environment so that the new field is visible when creating the DualWrite mapping.
+
+
 #### Part 3 - Incorporate the new field into the DualWrite map
 Now that we have the new field available in both systems, we need to map those fields as part of the DualWrite integration. The mappings provided by Microsoft are read-only, so to add our new field mapping we'll need to save a copy and modify that copy.
 
@@ -104,9 +123,30 @@ At this point, it would be advised to perform some testing to ensure that the em
 #### Part 4 - Extend F&O business logic to lookup default financial dimensions
 There is a batch job in F&O which is responsible for creating the journal lines from the actuals records that were passed into F&O through DualWrite. The class containing this code is `ProjActualsImportIntegration`. This is an extension of another class, `ProjCDSActualsImportIntegration` which was used in previous versions of F&O when D365 PSA (Project Service Automation) was configured to integrate with it.
 
-The majority of the code which initialises the journal line still sits inside the base class, and so we will extend that base class with some additional business logic to lookup the default dimensions of the employee, based on the email address that was passed over with the 'actuals' record.
+Much of the code which initialises the journal lines still sits inside the base class, and so we will extend that base class with additional business logic to lookup the default dimensions of the employee, based on the email address that was passed over with the 'actuals' record.
 
 Returning to Visual Studio in the F&O development environment and the project created in part 2 of the customisation, we need to extend the class `ProjCDSActualsImportIntegration` and use the [chain of command approach](https://docs.microsoft.com/en-us/dynamics365/fin-ops-core/dev-itpro/extensibility/method-wrapping-coc) to allow us to append some code to the initJournalLine method, as shown in the screenshot below. We can then add a new method where we execute our custom business logic and call it after executing the standard logic.
 
 *screenshot*
 
+The code is wrapped in a check to ensure it only executes when the current legal entity is configured to run in Project Operations integrated mode and only if the record being processed actually contains a value in the email field. The steps we then have to go through to get the default dimensions are as follows and demonstrated in the code in the screenshot:
+
+ - Use the email address to identify a user record
+ - Get the worker record associated with that user record
+ - Get the employment record for that worker in the current legal entity
+ - Copy the financial dimensions onto the journal line
+
+*screenshot*
+
+The code sample above is good for demonstrating the steps and the individual data sources used to get to the required info but is inefficient because it makes multiple calls to the database. To address this, we will create a SQL view, which will allow us to quickly lookup the required info with a single query.
+
+A SQL view is based on a query defined in the project, so we will go to add new object and choose query.
+
+We then add the data sources, with their relations to the query definition.
+
+Then we can create the SQL view and define it with the query we just created. A build will ne needed at this stage to synchronise the database and create the new view.
+
+Finally, we can refactor our business logic to query our new view directly as below. You can grab the source code for the whole class from the repo here. *to be linked*
+
+After another build, we are then ready to test the end to end solution to verify that any newly created journal lines are indeed picking up the default financial dimensions of the employee who performed the work!
+ 
