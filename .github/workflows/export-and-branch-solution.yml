@@ -29,21 +29,21 @@ jobs:
         environment-url: 'https://orgf3615da0.crm11.dynamics.com/'
         user-name: 'd365admin@finopsfuntimes.onmicrosoft.com'
         password-secret: ${{ secrets.PACKAGINGSECRET }}
-        solution-name: ProjOpsFinDimsPowerAppSolution
-        solution-output-file: out/exported/ProjOpsFinDimsPowerAppSolution.zip
+        solution-name: MyProjectOpsExtentions
+        solution-output-file: out/exported/MyProjectOpsExtentions.zip
 
     - name: unpack-solution action
       uses: microsoft/powerplatform-actions/unpack-solution@v0
       with:
-        solution-file: out/exported/ProjOpsFinDimsPowerAppSolution.zip
-        solution-folder: out/solutions/ProjOpsFinDimsPowerAppSolution
+        solution-file: out/exported/MyProjectOpsExtentions.zip
+        solution-folder: out/solutions/MyProjectOpsExtentions
         solution-type: 'Unmanaged'
         overwrite-files: true
 
     - name: branch-solution, prepare it for a PullRequest
       uses: microsoft/powerplatform-actions/branch-solution@v0
       with:
-        solution-folder: out/solutions/ProjOpsFinDimsPowerAppSolution
-        solution-target-folder: solutions/ProjOpsFinDimsPowerAppSolution
+        solution-folder: out/solutions/MyProjectOpsExtentions
+        solution-target-folder: solutions/MyProjectOpsExtentions
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         allow-empty-commit: true
