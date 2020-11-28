@@ -44,6 +44,6 @@ jobs:
       uses: microsoft/powerplatform-actions/branch-solution@v0
       with:
         solution-folder: out/solutions/MyProjectOpsExtentions
-        solution-target-folder: solutions/MyProjectOpsExtentions
+        solution-target-folder: CE_solution/MyProjectOpsExtentions
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         allow-empty-commit: true
