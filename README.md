@@ -107,8 +107,11 @@ In the F&O environment, access the DualWrite maps by navigating to the 'Data man
 Once the list of maps has loaded, identify the 'Project Operations integration actuals' map `msdyn_actuals` by searching for 'actual' in the filter box in the top right of the screen:
 ![Screenshot of Finance & Operations system Dual-Write mappings list, filtered with text actual](https://github.com/finopsfuntimes/ProjectOpsEmpFinDims/raw/main/ScreenShots/FODualWriteMapsActual.JPG)
 
-Click on the map to open the details page and if the map is currently in the 'running' state, stop it by clicking the 'stop' button in the top left of the screen. Once stopped, use the 'Save as' menu button to create the copy of this map, which we can then edit:
+Click on the map to open the details page and if the map is currently in the 'running' state, stop it by clicking the 'stop' button in the top left of the screen. Once stopped, use the 'Save as' menu button to create the copy of this map, which we can then edit.
+
 ![Screenshot of Finance & Operations DualWrite mapping save as screen](https://github.com/finopsfuntimes/ProjectOpsEmpFinDims/raw/main/ScreenShots/FODualWriteMapSaveAs.JPG)
+
+*Note that since we are taking a copy of a standard map rather than extending it, we should be mindful that future updates to the original map by Microsoft will NOT be automatically reflected in our copy, therefore it is important to have a manual procedure to check for changes following a Microsoft update. To help with this process, a good tip is to set the version of the custom map to be the same as the original Microsoft map, making it easier to identify if the original version number has increased (and therefore changes are present) following an update.* 
 
 Click on the 'refresh tables' button to ensure that the custom field has been picked up in the table definition and then click on the 'add mapping' button to create the new field map. This will create a new entry at the bottom of the list, where you can click on the [none] link on each side of the map to find a select your email address custom field. The field is populated from the CE system and would not be modified in F&O, therefore click on the equals sign and change the sync direction from 'Bidirectional' to 'Common data service to Finance and Operations apps.' The screenshot shows an example of how this should look. Click on the 'save' button at the top of the screen and once saved, click on 'run' to ensure the map can start without errors.
 ![Screenshot of Finance & Operations DualWrite mapping, customised with bookable resource email field map](https://github.com/finopsfuntimes/ProjectOpsEmpFinDims/raw/main/ScreenShots/FODualWriteMapCustomised.JPG)
@@ -118,35 +121,29 @@ Even though the steps above were performed via the Finance & Operations user int
 
 At this point, it would be advised to perform some testing to ensure that the email of a bookable resource is successfully passed over to the F&O system when a time entry is approved in the Project Operations model driven app. You can validate this using table browser in F&O by modifying the URL below with the base URL of the environment and the legal entity in which you are testing.
 
-*Example URL to go here*
+**[base-environment-URL]**/?mi=SysTableBrowser&TableName=ProjCDSActualsImport&cmp=**USPM**
 
 #### Part 4 - Extend F&O business logic to lookup default financial dimensions
 There is a batch job in F&O which is responsible for creating the journal lines from the actuals records that were passed into F&O through DualWrite. The class containing this code is `ProjActualsImportIntegration`. This is an extension of another class, `ProjCDSActualsImportIntegration` which was used in previous versions of F&O when D365 PSA (Project Service Automation) was configured to integrate with it.
 
 Much of the code which initialises the journal lines still sits inside the base class, and so we will extend that base class with additional business logic to lookup the default dimensions of the employee, based on the email address that was passed over with the 'actuals' record.
 
-Returning to Visual Studio in the F&O development environment and the project created in part 2 of the customisation, we need to extend the class `ProjCDSActualsImportIntegration` and use the [chain of command approach](https://docs.microsoft.com/en-us/dynamics365/fin-ops-core/dev-itpro/extensibility/method-wrapping-coc) to allow us to append some code to the initJournalLine method, as shown in the screenshot below. We can then add a new method where we execute our custom business logic and call it after executing the standard logic.
-
-*screenshot*
-
+Returning to Visual Studio in the F&O development environment and the project created in part 2 of the customisation, we need to extend the class `ProjCDSActualsImportIntegration` and use the [chain of command approach](https://docs.microsoft.com/en-us/dynamics365/fin-ops-core/dev-itpro/extensibility/method-wrapping-coc) to allow us to append some code to the `initProjAdvancedJournalLineRecord` method, as shown in the screenshot below. We can then add a new method where we execute our custom business logic and call it after executing the standard logic.
+![enter image description here](https://github.com/finopsfuntimes/ProjectOpsEmpFinDims/raw/main/ScreenShots/VSCoCProjCDSActualsImportIntegration.JPG)
 The code is wrapped in a check to ensure it only executes when the current legal entity is configured to run in Project Operations integrated mode and only if the record being processed actually contains a value in the email field. The steps we then have to go through to get the default dimensions are as follows and demonstrated in the code in the screenshot:
 
  - Use the email address to identify a user record
  - Get the worker record associated with that user record
  - Get the employment record for that worker in the current legal entity
  - Copy the financial dimensions onto the journal line
+![enter image description here](https://github.com/finopsfuntimes/ProjectOpsEmpFinDims/raw/main/ScreenShots/VSmethodFindDefaultEmployeeDims.JPG)
 
-*screenshot*
+The code sample above is good for demonstrating the steps and the individual data sources used to get to the required info but is inefficient because it makes multiple calls to the database. To address this, we will create a SQL view, which will allow us to quickly lookup the required info with a single database trip. We recreate the multi step process by adding a new query object to the project, defining the relations between the data sources and then adding a new view object to the project and using the query as its data source:
+![enter image description here](https://github.com/finopsfuntimes/ProjectOpsEmpFinDims/raw/main/ScreenShots/VSQueryFinDimLookup.JPG)
 
-The code sample above is good for demonstrating the steps and the individual data sources used to get to the required info but is inefficient because it makes multiple calls to the database. To address this, we will create a SQL view, which will allow us to quickly lookup the required info with a single query.
-
-A SQL view is based on a query defined in the project, so we will go to add new object and choose query.
-
-We then add the data sources, with their relations to the query definition.
-
-Then we can create the SQL view and define it with the query we just created. A build will ne needed at this stage to synchronise the database and create the new view.
+A build of the project will be needed at this stage and a database synchronisation to create the new view at the SQL level.
 
 Finally, we can refactor our business logic to query our new view directly as below. You can grab the source code for the whole class from the repo here. *to be linked*
+![enter image description here](https://github.com/finopsfuntimes/ProjectOpsEmpFinDims/raw/main/ScreenShots/VSmethodFindDefaultEmployeeDimsV2.JPG)
 
 After another build, we are then ready to test the end to end solution to verify that any newly created journal lines are indeed picking up the default financial dimensions of the employee who performed the work!
- 
