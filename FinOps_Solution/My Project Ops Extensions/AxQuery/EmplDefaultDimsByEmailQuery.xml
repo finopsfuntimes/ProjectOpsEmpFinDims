@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxQuery xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns=""
+	i:type="AxQuerySimple">
+	<Name>EmplDefaultDimsByEmailQuery</Name>
+	<SourceCode>
+		<Methods>
+			<Method>
+				<Name>classDeclaration</Name>
+				<Source><![CDATA[
+[Query]
+public class EmplDefaultDimsByEmailQuery extends QueryRun
+{
+}
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+	<DataSources>
+		<AxQuerySimpleRootDataSource>
+			<Name>UserInfo</Name>
+			<Table>UserInfo</Table>
+			<DataSources>
+				<AxQuerySimpleEmbeddedDataSource>
+					<Name>DirPersonUser</Name>
+					<Table>DirPersonUser</Table>
+					<DataSources>
+						<AxQuerySimpleEmbeddedDataSource>
+							<Name>HcmWorker</Name>
+							<Table>HcmWorker</Table>
+							<DataSources>
+								<AxQuerySimpleEmbeddedDataSource>
+									<Name>HcmEmployment</Name>
+									<Table>HcmEmployment</Table>
+									<DataSources />
+									<DerivedDataSources />
+									<Fields>
+										<AxQuerySimpleDataSourceField>
+											<Name>LegalEntity</Name>
+											<Field>LegalEntity</Field>
+										</AxQuerySimpleDataSourceField>
+										<AxQuerySimpleDataSourceField>
+											<Name>DefaultDimension</Name>
+											<Field>DefaultDimension</Field>
+										</AxQuerySimpleDataSourceField>
+									</Fields>
+									<Ranges />
+									<Relations>
+										<AxQuerySimpleDataSourceRelation>
+											<Name>QueryDataSourceRelation1</Name>
+											<Field>RecId</Field>
+											<JoinDataSource>HcmWorker</JoinDataSource>
+											<RelatedField>Worker</RelatedField>
+										</AxQuerySimpleDataSourceRelation>
+									</Relations>
+								</AxQuerySimpleEmbeddedDataSource>
+							</DataSources>
+							<DerivedDataSources />
+							<Fields />
+							<Ranges />
+							<Relations>
+								<AxQuerySimpleDataSourceRelation>
+									<Name>QueryDataSourceRelation1</Name>
+									<Field>PersonParty</Field>
+									<JoinDataSource>DirPersonUser</JoinDataSource>
+									<RelatedField>Person</RelatedField>
+								</AxQuerySimpleDataSourceRelation>
+							</Relations>
+						</AxQuerySimpleEmbeddedDataSource>
+					</DataSources>
+					<DerivedDataSources />
+					<Fields />
+					<Ranges />
+					<Relations>
+						<AxQuerySimpleDataSourceRelation>
+							<Name>QueryDataSourceRelation1</Name>
+							<Field>Id</Field>
+							<JoinDataSource>UserInfo</JoinDataSource>
+							<RelatedField>User</RelatedField>
+						</AxQuerySimpleDataSourceRelation>
+					</Relations>
+				</AxQuerySimpleEmbeddedDataSource>
+			</DataSources>
+			<DerivedDataSources />
+			<Fields>
+				<AxQuerySimpleDataSourceField>
+					<Name>networkAlias</Name>
+					<Field>networkAlias</Field>
+				</AxQuerySimpleDataSourceField>
+			</Fields>
+			<Ranges />
+			<GroupBy />
+			<Having />
+			<OrderBy />
+		</AxQuerySimpleRootDataSource>
+	</DataSources>
+</AxQuery>

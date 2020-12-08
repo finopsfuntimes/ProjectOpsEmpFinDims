@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AxClass xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<Name>ProjCDSActualsImportIntegration_MyProjOpsCustom_Extension</Name>
+	<SourceCode>
+		<Declaration><![CDATA[
+/// <summary>
+/// Extension class for the <c>ProjCDSActualsImportIntegration</c> for custom processing tasks
+/// </summary>
+[ExtensionOf(classstr(ProjCDSActualsImportIntegration))]
+final class ProjCDSActualsImportIntegration_MyProjOpsCustom_Extension
+{
+}
+]]></Declaration>
+		<Methods>
+			<Method>
+				<Name>initProjAdvancedJournalLineRecord</Name>
+				<Source><![CDATA[
+    protected ProjAdvancedJournalLine initProjAdvancedJournalLineRecord(ProjCDSActualsImport _costRecord, ProjCDSActualsImport _unbilledSalesRecord, ProjCDSActualsImport _taxCostRecord, RecId _header)
+    {
+        // Run the standard method first
+        ProjAdvancedJournalLine thisline;
+        thisline = next initProjAdvancedJournalLineRecord(_costRecord, _unbilledSalesRecord, _taxCostRecord, _header);
+        
+        // Only run our custom code in Project Operations integrated mode
+        if (ProjProjectOperationsIntegrationFeatureHelper::isFeatureEnabled())
+        {
+
+            // See if we have an email address to use for lookup (Field assigned from unbilledSales if it exists, Cost otherwise)
+            EmailBase resourceEmail = _unbilledSalesRecord ? _unbilledSalesRecord.BookableResourceEmail : _costRecord.BookableResourceEmail;
+            if(resourceEmail != "")
+            {
+
+                // Lookup the default dimensions using our new custom method
+                DimensionDefault employeeDefaultDims = ProjCDSActualsImportIntegration::findDefaultEmployeeDimsbyEmail(resourceEmail);
+
+                if(employeeDefaultDims)
+                {
+                    // Merge and set the default dimensions for the journal line
+                    thisline.DefaultDimension = LedgerDimensionDefaultFacade::serviceMergeDefaultDimensions(
+                                                        ProjTable::find(thisline.ProjId).DefaultDimension,
+                                                        employeeDefaultDims);
+                }
+            }
+
+        }
+        
+        return thisline;
+    }
+
+]]></Source>
+			</Method>
+			<Method>
+				<Name>findDefaultEmployeeDimsbyEmail</Name>
+				<Source><![CDATA[
+    public static DimensionDefault findDefaultEmployeeDimsbyEmail(EmailBase _email)
+    {
+        
+        EmplDefaultDimsByEmailView emplDefaultDimsByEmailView;
+
+        select firstonly DefaultDimension from emplDefaultDimsByEmailView
+            where emplDefaultDimsByEmailView.networkAlias == _email
+                && emplDefaultDimsByEmailView.LegalEntity == CompanyInfo::current();
+
+        return emplDefaultDimsByEmailView ? emplDefaultDimsByEmailView.DefaultDimension : 0;
+
+
+
+        /* // The code below is useful for demonstrating the solution, but we 
+           // replace it with a more efficient lookup via custom SQL view as above
+        DimensionDefault ret = 0;
+        DirPersonUser    personUser;
+        HcmWorker        worker;
+        HcmEmployment    hcmEmployment;
+        UserInfo         userInfo;
+        
+        // Step 1 - is there a user with a matching email address
+        select firstonly id from userInfo where userInfo.networkAlias == _email;
+
+        if(userInfo)
+        {
+            // Step 2 - get the worker record associated with that user
+            select firstonly RecId from worker
+                    exists join personUser
+                    where worker.Person == personUser.PersonParty
+                    &&    personUser.User == userInfo.id;
+
+            if(worker)
+            {
+                // Step 3 - get the employment for the worker
+                select firstonly hcmEmployment
+                        where hcmEmployment.Worker == worker.RecId
+                        &&    hcmEmployment.LegalEntity == CompanyInfo::current();
+
+                if(hcmEmployment)
+                {
+                    // Return the default dimensions we looked up
+                    ret = hcmEmployment.DefaultDimension;
+                }
+
+            }
+        }
+
+        return ret;
+        */
+        
+    }
+
+]]></Source>
+			</Method>
+		</Methods>
+	</SourceCode>
+</AxClass>
