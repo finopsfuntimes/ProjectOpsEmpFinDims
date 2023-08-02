@@ -3,8 +3,10 @@
 *This is an example customisation for [Dynamics 365 Project Operations](https://dynamics.microsoft.com/en-us/project-operations/overview/). The solution is provided 'as-is' with no warranty and is not supported by Microsoft. It can be used as a guide to build out a custom solution for a customer implementation, to be managed/maintained by the customer or by the implementing partner.*
 
 *Browse the CE_Solution and FinOps_Solution folders in this repo for source code, follow the walkthrough below to build step by step or download the latest release to get the Power Apps solution file and the F&O axpp solution file, which can be imported into your own dev environments for testing out.* 
-
-**NOTE** - THIS IS WORK IN PROGRESS (28.11.2020)
+##
+**UPDATE 2023** - This feature is now on the roadmap for Project Operations:
+[Enable default financial dimensions for bookable resources](https://releaseplans.microsoft.com/?app=Project+Operations&planID=c7a9cf52-6524-ee11-9cbd-00224827e5da) - but the guide is still useful for those needing to transfer other fields or financial dimension values via the integration journal!
+##
 
 ## Walkthrough
 
